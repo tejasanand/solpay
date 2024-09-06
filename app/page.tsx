@@ -6,145 +6,145 @@ import { useCallback, useState, useEffect } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 
-export default function BuyTreiktoToken() {
-  const [qrCode, setQrCode] = useState<string>();
-  const [reference, setReference] = useState<string>();
-  const [tokenAmount, setTokenAmount] = useState<number>(1);
-  const [totalAmount, setTotalAmount] = useState<number>(0);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [retryCount, setRetryCount] = useState<number>(0);
+export default function PurchaseToken() {
+  const [qrCodeImage, setQrCodeImage] = useState<string>();
+  const [paymentReference, setPaymentReference] = useState<string>();
+  const [amountOfTokens, setAmountOfTokens] = useState<number>(1);
+  const [totalCost, setTotalCost] = useState<number>(0);
+  const [isChecking, setIsChecking] = useState(false);
+  const [attemptCount, setAttemptCount] = useState<number>(0);
   const router = useRouter();
 
-  const ratePerToken = 0.01; // 0.01 SOL per Treikto Token
+  const tokenPrice = 0.01; // 0.01 SOL per token
 
   useEffect(() => {
-    setTotalAmount(tokenAmount * ratePerToken);
-  }, [tokenAmount]);
+    setTotalCost(amountOfTokens * tokenPrice);
+  }, [amountOfTokens]);
 
-  const handleGenerateClick = async () => {
+  const handleGenerateQR = async () => {
     try {
-      const res = await axios.post(
+      const response = await axios.post(
         "/api/pay",
-        { tokenAmount },
+        { kwAmount: amountOfTokens },
         {
           headers: {
             "Content-Type": "application/json",
           },
         }
       );
-      const { url, ref } = res.data;
+      const { url, ref } = response.data;
       const qr = createQR(url);
       const qrBlob = await qr.getRawData("png");
       if (!qrBlob) return;
       const reader = new FileReader();
       reader.onload = (event) => {
         if (typeof event.target?.result === "string") {
-          setQrCode(event.target.result);
+          setQrCodeImage(event.target.result);
         }
       };
       reader.readAsDataURL(qrBlob);
-      setReference(ref);
-      handleVerify(ref);
+      setPaymentReference(ref);
+      setAttemptCount(0); // Reset attempt count when generating a new QR
     } catch (error) {
       console.error("Error generating QR code:", error);
     }
   };
 
-  const handleVerify = useCallback(
+  const verifyPayment = useCallback(
     async (ref: string) => {
       if (!ref) {
-        alert("Please generate a payment request first");
+        alert("Please generate a payment request first.");
         return;
       }
 
-      setIsVerifying(true);
-      let wentThrough = false;
-      let localRetryCount = retryCount;
-      const maxRetries = 25;
+      setIsChecking(true);
+      let paymentVerified = false;
+      let localAttemptCount = attemptCount;
+      const maxAttempts = 10; // Reduced attempts for quicker checks
 
-      while (!wentThrough && localRetryCount < maxRetries) {
+      while (!paymentVerified && localAttemptCount < maxAttempts) {
         try {
-          const res = await axios.get(`/api/pay?reference=${ref}`);
-          const { status } = res.data;
+          const response = await axios.get(`/api/pay?reference=${ref}`);
+          const { status } = response.data;
           if (status === "verified") {
-            router.push("/success");
-            wentThrough = true;
+            router.push("/complete");
+            paymentVerified = true;
           }
-          await delay(Math.min(1000 * Math.pow(2, localRetryCount), 1000 * 15));
+          await delay(1000); // Reduced delay for quicker checks
         } catch (error) {
           console.error("Error verifying payment:", error);
         }
-        localRetryCount++;
-        setRetryCount(localRetryCount);
+        localAttemptCount++;
+        setAttemptCount(localAttemptCount);
       }
 
-      if (!wentThrough) {
-        alert("Failed to verify payment after multiple attempts.");
+      if (!paymentVerified) {
+        alert("Payment verification failed after multiple attempts.");
       }
 
-      setIsVerifying(false);
+      setIsChecking(false);
     },
-    [router, retryCount]
+    [router, attemptCount]
   );
 
   return (
     <>
       <Head>
-        <title>Buy Treikto Token</title>
-        <meta name="description" content="Purchase Treikto Token" />
+        <title>Purchase Token</title>
+        <meta name="description" content="Buy your tokens here" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <main className="flex min-h-screen flex-col justify-center items-center bg-[#0f0f0f]">
-        <h1 className="text-2xl font-semibold mb-4">Buy Treikto Token</h1>
-        {!qrCode && (
+      <main className="flex min-h-screen flex-col justify-center items-center bg-gray-800">
+        <h1 className="text-3xl font-bold mb-4 text-white">Purchase Token</h1>
+        {!qrCodeImage && (
           <div className="mb-4 flex items-center">
-            <label htmlFor="tokenAmount" className="mr-2 text-lg">
-              Amount of Tokens:
+            <label htmlFor="tokenAmount" className="mr-2 text-lg text-white">
+              Number of Tokens:
             </label>
             <input
               type="number"
               id="tokenAmount"
-              value={tokenAmount}
+              value={amountOfTokens}
               min={1}
-              onChange={(e) => setTokenAmount(Number(e.target.value))}
+              onChange={(e) => setAmountOfTokens(Number(e.target.value))}
               className="p-2 border border-gray-300 rounded-md text-black"
             />
           </div>
         )}
-        {qrCode && (
+        {qrCodeImage && (
           <div className="text-center">
             <Image
-              src={qrCode}
+              src={qrCodeImage}
               className="rounded-lg"
               alt="QR Code"
               width={300}
               height={300}
               priority
             />
-            <p className="text-sm text-gray-500">
-              Scan the QR code to make a payment
+            <p className="text-sm text-gray-400">
+              Scan the QR code to complete your payment
             </p>
           </div>
         )}
         <p className="text-lg text-white mb-4">
-          Total Amount: {totalAmount.toFixed(4)} SOL
+          Total Cost: {totalCost.toFixed(4)} SOL
         </p>
-        {!reference && (
+        {!paymentReference && (
           <button
-            className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
-            onClick={handleGenerateClick}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            onClick={handleGenerateQR}
           >
-            Generate Payment Request
+            Create Payment Request
           </button>
         )}
-        {retryCount >= 3 && (
+        {attemptCount >= 3 && (
           <button
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4"
-            onClick={() => handleVerify(reference!)}
+            className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded mt-4"
+            onClick={() => verifyPayment(paymentReference!)}
           >
-            Verify Payment
+            Check Payment Status
           </button>
         )}
       </main>

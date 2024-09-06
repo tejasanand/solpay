@@ -11,6 +11,9 @@ dependencies:
   axios:
     specifier: ^1.7.7
     version: 1.7.7
+  bignumber:
+    specifier: ^1.1.0
+    version: 1.1.0
   next:
     specifier: 14.2.8
     version: 14.2.8(react-dom@18.3.1)(react@18.3.1)
@@ -952,6 +955,11 @@ packages:
 
   /bignumber.js@9.1.2:
     resolution: {integrity: sha512-2/mKyZH9K85bzOEfhXDBFZTGd1CTs+5IHpeFQo9luiBG7hghdC851Pj2WAhb6E3R6b9tZj/XKhbg4fum+Kepug==}
+    dev: false
+
+  /bignumber@1.1.0:
+    resolution: {integrity: sha512-EGqHCKkEAwVwufcEOCYhZQqdVH+7cNCyPZ9yxisYvSjHFB+d9YcGMvorsFpeN5IJpC+lC6K+FHhu8+S4MgJazw==}
+    engines: {node: '>=0.4.0'}
     dev: false
 
   /binary-extensions@2.3.0:
